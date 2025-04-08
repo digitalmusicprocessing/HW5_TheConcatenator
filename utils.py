@@ -73,7 +73,47 @@ def load_corpus(path, sr, dc_normalize=True, amp_normalize=True):
     assert(len(samples) > 0)
     return np.concatenate(samples)
 
-def stochastic_universal_sample(ws, target_points):
+def get_mel_filterbank(sr, win, mel_bands=40, min_freq=0.0, max_freq=8000):
+    """
+    Return a mel-spaced triangular filterbank
+
+    Parameters
+    ----------
+    sr: int
+        Audio sample rate
+    win: int
+        Window length
+    mel_bands: int
+        Number of bands to use
+    min_freq: float 
+        Minimum frequency for Mel filterbank
+    max_freq: float
+        Maximum frequency for Mel filterbank
+
+    Returns
+    -------
+    ndarray(mel_bands, win//2+1)
+        Mel filterbank, with each filter per row
+    """
+    melbounds = np.array([min_freq, max_freq])
+    melbounds = 1125*np.log(1 + melbounds/700.0)
+    mel = np.linspace(melbounds[0], melbounds[1], mel_bands+2)
+    binfreqs = 700*(np.exp(mel/1125.0) - 1)
+    binbins = np.floor(((win-1)/float(sr))*binfreqs) #Floor to the nearest bin
+    binbins = np.array(binbins, dtype=np.int64)
+    # Create mel triangular filterbank
+    melfbank = np.zeros((mel_bands, win//2+1), dtype=np.float32)
+    for i in range(1, mel_bands+1):
+        thisbin = binbins[i]
+        lbin = binbins[i-1]
+        rbin = thisbin + (thisbin - lbin)
+        rbin = binbins[i+1]
+        melfbank[i-1, lbin:thisbin+1] = np.linspace(0, 1, 1 + (thisbin - lbin))
+        melfbank[i-1, thisbin:rbin+1] = np.linspace(1, 0, 1 + (rbin - thisbin))
+    melfbank = melfbank/np.sum(melfbank, 1)[:, None]
+    return melfbank
+
+def stochastic_universal_sample(ws):
     """
     Resample indices according to universal stochastic sampling.
     Also known as "systematic resampling"
@@ -85,15 +125,11 @@ def stochastic_universal_sample(ws, target_points):
     ----------
     ndarray(P)
         The normalized weights of the particles
-    target_points: int
-        The number of desired samples
     
     Returns
     -------
     ndarray(P, dtype=int)
         Indices of sampled particles, with replacement
-    ndarray(P)
-        Weights of the new samples
     """
     counts = np.zeros(ws.size)
     w = np.zeros(ws.size+1)
@@ -102,22 +138,19 @@ def stochastic_universal_sample(ws, target_points):
     w = np.cumsum(w)
     p = np.random.rand() # Cumulative probability index, start off random
     idx = 0
-    for i in range(target_points):
+    for i in range(len(ws)):
         while not (p >= w[idx] and p < w[idx+1]):
             idx += 1
         idx = min(idx, ws.size-1) # Safeguard
         counts[order[idx]] += 1
-        p += 1/target_points
+        p += 1/len(ws)
         if p >= 1:
             p -= 1
             idx = 0
-    ws_new = np.zeros(ws.size)
-    choices = np.zeros(ws.size)
+    choices = np.zeros(ws.size, dtype=int)
     idx = 0
     for i in range(len(counts)):
         for w in range(int(counts[i])):
             choices[idx] = i
-            ws_new[idx] = ws[i]/counts[i]
             idx += 1
-    ws_new /= np.sum(ws_new)
-    return choices, ws_new
+    return choices
