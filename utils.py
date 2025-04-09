@@ -180,3 +180,26 @@ def do_nmf_kl(V, W, n_iters):
         VL = V/(W.dot(H))
         H *= (W.T).dot(VL)/np.sum(W, 0)[:, None]
     return H
+
+def get_kl_fit(V, W, H):
+    """
+    Compute the KL distance for a NMF
+
+    Parameters
+    ----------
+    V: ndarray(win, n_frames), nonnegative
+        Target spectrogram that's being factorized
+    W: ndarray(win, K), nonnegative
+        The spectral template columns
+    H: ndarray(K, n_frames), nonnegative
+        The activations over time
+    
+    Returns
+    -------
+    float: KL fit
+    """
+    Vi = W.dot(H)
+    Vi[Vi == 0] = 1
+    logarg = V/Vi
+    logarg[logarg == 0] = 1
+    return np.mean(V*np.log(logarg) - V + Vi)
