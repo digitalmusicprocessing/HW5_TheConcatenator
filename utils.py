@@ -154,3 +154,29 @@ def stochastic_universal_sample(ws):
             choices[idx] = i
             idx += 1
     return choices
+
+def do_nmf_kl(V, W, n_iters):
+    """
+    Perform Kullback-Liebler nonnegative matrix factorization
+    
+    Parameters
+    ----------
+    V: ndarray(win, n_frames), nonnegative
+        Spectrogram amplitudes to factorize
+    n_iters: int
+        Number of iterations to perform
+    
+    Returns
+    -------
+    W: ndarray(win, K), nonnegative
+        The spectral template columns
+    H: ndarray(K, n_frames), nonnegative
+        The activations over time
+    """
+    p = W.shape[1]
+    H = np.random.rand(p, V.shape[1])
+    ## Apply multiplicative update rules n_iters times in a loop
+    for i in range(n_iters):
+        VL = V/(W.dot(H))
+        H *= (W.T).dot(VL)/np.sum(W, 0)[:, None]
+    return H
