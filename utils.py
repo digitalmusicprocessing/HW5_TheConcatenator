@@ -168,8 +168,6 @@ def do_nmf_kl(V, W, n_iters):
     
     Returns
     -------
-    W: ndarray(win, K), nonnegative
-        The spectral template columns
     H: ndarray(K, n_frames), nonnegative
         The activations over time
     """
