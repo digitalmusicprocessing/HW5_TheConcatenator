@@ -19,7 +19,29 @@ DB_MIN = -1000
 
 hann_window = lambda N: (0.5*(1 - np.cos(2*np.pi*np.arange(N)/N))).astype(np.float32)
 
-def load_corpus(path, sr, dc_normalize=True, amp_normalize=True):
+def load_wav(filename):
+    """
+    Wrap around scikit wavfile to read audio samples and 
+    convert from 16 bit signed shorts to floats in [-1, 1]
+
+    Parameters
+    ----------
+    filename: str
+        Path to file
+
+    Returns
+    -------
+    x: ndarray(N, dtype=float)
+        Audio samples, in the range [-1, 1]
+    sr: int
+        Sample rate
+    """
+    from scipy.io import wavfile
+    sr, x = wavfile.read(filename)
+    x = np.array(x, dtype=float)/32768
+    return x, sr
+
+def load_corpus(path, sr, dc_normalize=True, amp_normalize=True, use_librosa=True):
     """
     Load a corpus of audio
 
@@ -33,6 +55,8 @@ def load_corpus(path, sr, dc_normalize=True, amp_normalize=True):
         If True, do a DC-offset normalization on each clip
     amp_normalize: bool
         If True (default), normalize the audio sample range to be in [-1, 1]
+    use_librosa: bool
+        If True, load audio with librosa.  If False, wrap around scipy's wavfile
     
     Returns
     -------
@@ -54,9 +78,14 @@ def load_corpus(path, sr, dc_normalize=True, amp_normalize=True):
     for f in sorted(files):
         try:
             try:
-                x, sr = librosa.load(f, sr=sr, mono=True)
-            except:
-                print("Error loading", f)
+                if use_librosa:
+                    x, sr = librosa.load(f, sr=sr, mono=True)
+                else:
+                    x, this_sr = load_wav(f)
+                    if sr != this_sr:
+                        print(f"Warning: Sample rate {this_sr} of loaded file does not match desired sample rate {sr}")
+            except Exception as e:
+                print("Error loading", e, f)
                 continue
             N += x.size
             if dc_normalize:
