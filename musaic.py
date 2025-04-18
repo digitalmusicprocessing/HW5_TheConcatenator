@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from utils import get_mel_filterbank, do_nmf_kl, hann_window, stochastic_universal_sample
+from utils import get_mel_filterbank, do_nmf_kl, get_kl_fit, hann_window, stochastic_universal_sample
 
 
 def musaic(corpus, ytarget, sr, win, p, pd=0.95, temperature=50, n_particles=100, mel_bands=100, fmax=4000):
