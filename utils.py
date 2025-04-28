@@ -204,8 +204,12 @@ def do_nmf_kl(V, W, n_iters):
     H = np.random.rand(p, V.shape[1])
     ## Apply multiplicative update rules n_iters times in a loop
     for i in range(n_iters):
-        VL = V/(W.dot(H))
-        H *= (W.T).dot(VL)/np.sum(W, 0)[:, None]
+        denom = W.dot(H)
+        denom[denom == 0] = 1
+        VL = V/denom
+        denom = np.sum(W, 0)[:, None]
+        denom[denom == 0] = 1
+        H *= (W.T).dot(VL)/denom
     return H
 
 def get_kl_fit(V, W, H):
